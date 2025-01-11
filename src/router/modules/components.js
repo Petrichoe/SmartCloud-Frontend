@@ -10,7 +10,7 @@ export default [
     children: [
       {
         path: 'index',
-        name: 'ask',
+        name: 'askIndex',
         component: () => import('@/pages/ask/index.vue'),
         meta: { title: '发布问题' },
       }

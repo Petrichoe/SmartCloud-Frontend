@@ -23,7 +23,7 @@
     "pinia-use-persist": "^0.0.21",
     "qrcode.vue": "^3.3.3",
     "sass": "^1.53.0",
-    "swiper": "^8.3.1",
+    "swiper": "^11.2.0",
     "tcadapter": "^0.0.8",
     "vite-svg-loader": "^3.4.0",
     "vue": "^3.2.25",
