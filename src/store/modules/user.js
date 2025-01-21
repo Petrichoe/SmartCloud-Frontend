@@ -2,19 +2,20 @@ import { defineStore } from 'pinia';
 import { TOKEN_NAME } from '@/config/global';
 import  store  from '@/store';
 import {tryRefreshToken} from "@/utils/refreshToken";
-
 const InitUserInfo = {};
-
 export const useUserStore = defineStore('user', {
   id:"userInfo",
   state: () => ({
     token: sessionStorage.getItem(TOKEN_NAME) , // 使用 || 'main_token' 默认token不走权限
     userInfo: JSON.parse(sessionStorage.getItem("userInfo")),
+    sessionInfo: sessionStorage.getItem("sessionInfo")!=='undefined'?JSON.parse(sessionStorage.getItem("sessionInfo")):{},
+    // sessionInfo: sessionStorage.getItem("sessionInfo"),
+    chatDataList:JSON.parse(sessionStorage.getItem("chatDataList"))
   }),
   persist: {
     enabled: true,
     strategies: [
-      { storage: sessionStorage, paths: ["token", "userInfo"] },
+      { storage: sessionStorage, paths: ["token", "userInfo","sessionInfo","chatDataList"] },
     ],
   },
   getters: {
@@ -23,6 +24,14 @@ export const useUserStore = defineStore('user', {
     },
     getUserInfo: (state) => {
       return state.userInfo;
+    },
+    getSessionInfo: (state) => {
+      console.log(state.sessionInfo)
+      return state.sessionInfo;
+    },
+    getChatDataList: (state) => {
+      
+      return state.chatDataList;
     },
   },
   actions: {
@@ -44,6 +53,16 @@ export const useUserStore = defineStore('user', {
     },
     async removeToken() {
       this.token = '';
+    },
+    // ai新建聊天窗口id
+    async setSessionInfo(sessionInfo) {
+      this.sessionInfo = sessionInfo;
+      sessionStorage.setItem('sessionInfo', JSON.stringify(sessionInfo));
+    },
+    // 新建聊天记录
+    async setChatDataList(chatDataList) {
+      this.chatDataList = chatDataList
+      sessionStorage.setItem('chatDataList', JSON.stringify(chatDataList));
     },
   },
   

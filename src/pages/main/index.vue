@@ -71,11 +71,16 @@
       </el-dialog>
     </div>
     <div class="floatCont fx-fd-col fx-ct">
-      <router-link to="/main/coupon">
-        <img src="@/assets/coup.png" coupon alt="" />
-      </router-link>
+      <div class="item ticket">
+        <router-link to="/main/coupon">
+          <img src="@/assets/coup.png" coupon alt="" />
+        </router-link>
+      </div>
+      <div class="item question">
+        <span class="icon"></span>
+      </div>
       <div class="cont">
-        <img src="@/assets/btn_backtop.png" alt="" />
+        <span class="icon"></span>
       </div>
     </div>
   </div>

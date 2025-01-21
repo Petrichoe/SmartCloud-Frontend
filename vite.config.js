@@ -32,8 +32,14 @@ export default defineConfig((mode) => {
       port: 18082,
       host: '0.0.0.0',
       proxy: {
+        '/api': {
+          target: 'https://apifoxmock.com/m1/5754259-5437482-default', // pip正式环境
+
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api/, '')
+        },
         '/img-tx': {
-          target:  'https://tjxt-dev.itheima.net/', // 'http://172.17.2.134',
+          target:  'http://172.17.2.76:10010', // 'http://172.17.2.134',
           changeOrigin: true,
           // rewrite: (path) => {
           //   return path.replace(/^\/img-tx/, '')
