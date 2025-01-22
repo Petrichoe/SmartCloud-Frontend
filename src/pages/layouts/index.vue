@@ -98,7 +98,7 @@
                 </div>
               </div>
             </div>
-            <div class="answerContainer" v-if="item.type === 'ASSISTANT'">
+            <div class="answerContainer" v-if="item.type === 'ASSISTANT'&&(compiledMarkdown !== '' || item.content !== '')">
               <div class="avatarWrap aiAvatarWrap">
                 <div class="answerCon">
                   <div class="content">
@@ -182,7 +182,7 @@
                       ></span>
                       <span
                         class="updateIcon"
-                        @click="handleUp"
+                        @click="handleUp()"
                         v-if="
                           index === chatDataArr.length - 1 && !outputLoading
                         "
@@ -194,8 +194,9 @@
               </div>
             </div>
           </div>
+          <!--  -->
           <div v-if="isLoading" class="answerContainer answerLoad">
-            <span class="serverIcon"></span>给我点时间，我正在思考你的问题...
+            <span class="serverIcon"></span>给我点时间，我正在思考你的问题<span class="three-dots"></span>
           </div>
         </div>
       </div>
@@ -234,22 +235,21 @@
         <div class="dialogForm">
           <div class="dialogCon">
             <!-- 聊天表单 -->
-            <div class="textarea">
+            <div class="textarea" :class="textVal.length > 9950 ? 'textPad' : ''">
               <!-- <el-input type='textarea' :autosize="{ minRows: 1, maxRows: 5 }" maxlength="10000" :show-word-limit="textVal.length>9500" :class="textVal.length>9500?'textPad':''" v-model="textVal" @keydown.enter.prevent="onEnter" @keydown="handleKeyDown" @input="handleInput" placeholder="请将您的问题告诉我，Shift+Enter换行" :style="{ minHeight: '30px', maxHeight: '300px' }" autocomplete="off"></el-input> -->
               <textarea
-                :autosize="{ minRows: 1, maxRows: 5 }"
+                ref="textareaRef"
                 maxlength="10000"
-                :show-word-limit="textVal.length > 9500"
-                :class="textVal.length > 9500 ? 'textPad' : ''"
                 v-model="textVal"
                 @keydown.enter.prevent="onEnter"
                 @keydown="handleKeyDown"
                 @input="handleInput"
                 @focus="handleInput"
                 placeholder="请将您的问题告诉我，Shift+Enter换行"
-                :style="{ minHeight: '30px', maxHeight: '300px' }"
+                style="min-height: 20px;resize: none; overflow-y: auto;"
                 autocomplete="off"
               ></textarea>
+              <div class="textNum" :class="textVal.length > 9950 ? 'textShow' : ''"><span>{{textNum}}</span>/10000</div>
             </div>
             <!-- end -->
             <!-- 操作按钮 -->
@@ -270,7 +270,7 @@
                 <el-button
                   class="stopIcon"
                   @click="handleStop"
-                  v-if="outputLoading"
+                  v-if="outputLoading&&compiledMarkdown !== ''"
                   ><span class="bg"></span><span class="btn"></span
                 ></el-button>
 
@@ -319,6 +319,7 @@ import 'highlight.js/styles/monokai-sublime.css'; // 选择你喜欢的主题
 import tocPlugin from 'markdown-it-table-of-contents';
 import anchorPlugin from 'markdown-it-anchor';
 import defaultImage from '@/assets/icon.jpeg';
+import 'highlight.js/styles/default.css'; // 你可以根据需要选择其他主题
 // import markdownContent from '@/assets/your-markdown-file.md';
 // 获取接口
 import {
@@ -354,6 +355,10 @@ const detailsId = ref(null); //详情页id
 const hrefLink = ref(null);
 const userInfo = ref(store.getUserInfo); //用户数据
 const token = store.token;
+const isClick = ref(false) //内容正在生成中，回车是否可以发送内容
+const textareaRef =ref(false) //textarea设置ref
+const textNum = ref()//文本框输入的字数
+const maxNum = ref(10000)
 // 注册语言
 hljs.registerLanguage('javascript', javascript);
 
@@ -377,7 +382,7 @@ const md = new MarkdownIt({
   .use(tocPlugin)
   .use(anchorPlugin);
 // 自定义渲染器：重写 h1, h2, h3 标签的渲染规则，并去除空格
-['h1', 'h2', 'h3'].forEach((tag) => {
+['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'h7'].forEach((tag) => {
   md.renderer.rules[`${tag}_open`] = function (
     tokens,
     idx,
@@ -417,46 +422,43 @@ md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
   // 添加 target="_blank" 和 rel="noopener" 到所有的 <a> 标签
   tokens[idx].attrPush(['target', '_blank']);
   tokens[idx].attrPush(['rel', 'noopener']);
-  // console.log(tokens, idx, options, env, self)
-
-  // // 可选：如果你需要对某些特定的链接做例外处理，可以在这里添加逻辑
-  // let href = null;
-  // if (tokens[idx].attrs) {
-  //   for (let i = 0; i < tokens[idx].attrs.length; i++) {
-  //     if (tokens[idx].attrs[i][0] === 'href') {
-  //       href = tokens[idx].attrs[i][1];
-  //       break;
-  //     }
-  //   }
-  // }
-
-  // if (href) {
-  //   // 解析查询字符串部分以找到 id 参数
-  //   const urlParams = new URLSearchParams(href.split('?')[1]);
-  //   const id = urlParams.get('id');
-
-  //   if (id) {
-  //     // 将提取到的 id 添加到数组中
-  //     // extractedIds.value.push(id);
-  //     console.log(id,1111)
-  //     if(isSend.value){
-  //       // ids.value.push(id)
-  //       // console.log(ids.value)
-  //       // detailsId.value = id
-  //       hrefLink.value = href //获取详情的路由连接
-  //     }
-  //   }
-
-  // }
   // 使用默认的方式渲染标签
   return self.renderToken(tokens, idx, options);
 };
+// 添加自定义规则
+md.core.ruler.push('custom-class-rule', function (state) {
+  const tokens = state.tokens;
+  tokens.forEach(token => {
+    //  && token.level === 1
+    if (token.type === 'heading_open') {
+      // 为 h1 标签添加 custom-class 类
+      token.attrSet('class', ['custom-class-tit']);
+    }else if(token.type === 'bullet_list_open'){
+      token.attrSet('class', ['custom-class-ullist']);
+    }
+  });
+});
 const ids = ref([]);
 const compiledMarkdown = ref('');
 const markdownData = ref(''); //md代码
 const isTypingDone = computed(
   () => !typingDone.value && compiledMarkdown.value.length > 0
 );
+// 监听发送数据是否有改变
+watchEffect(()=>{
+  
+  if(isSend.value){
+    nextTick(()=>{
+        scrollToBottom()
+      })
+  }else{
+    nextTick(()=>{
+        scrollToBottom()
+      })
+  }
+  
+  
+})
 onMounted(() => {
   window.addEventListener('keydown', handleEnter);
   // clearInterval(typingInterval.value);
@@ -536,10 +538,8 @@ const getCourseLearningData = async (ids) => {
     
 };
 // 创建新对话
-const isStop = ref(false);
 const handleCread = () => {
   if (outputLoading.value) return;
-  isStop.value = true;
   // 清空本地对话的数据
   markdownContent.value = '';
   compiledMarkdown.value = '';
@@ -595,7 +595,8 @@ const eventSource = ref();
 const ctrl = new AbortController();
 // 发送信息
 const handleSend = async () => {
-  clearInterval(typingInterval.value);
+  // clearInterval(typingInterval.value);
+  
   nextTick(()=>{
     handleInput()
   })
@@ -623,8 +624,11 @@ const handleSend = async () => {
   //   sessionId: baseData.value.sessionId,
   //   q: textVal.value,
   // };
+  isSend.value =true
+  setInterval(()=>{
+    isSend.value=false
+  },3000)
   if (baseData.value === undefined) return;
-  // if(isStop.value) return
   eventSource.value = fetchEventSource(
     `http://172.17.2.76:10010/ais/chat?sessionId=${baseData.value.sessionId}&q=${textVal.value}`,
     {
@@ -669,15 +673,32 @@ const handleSend = async () => {
         // handleInput();
         outputLoading.value = false;
         textData.value = '';
+        isClick.value = false
         } else {
           textData.value += msg.data;
           const datas = msg.data;
           appendAndType(datas);
           markdownData.value = md.render(textData.value);
+          isClick.value = true
         }
+      },
+      onerror(err) {
+        textData.value = '';
+        markdownContent.value = '';
+        // compiledMarkdown.value = '';
+        textData.value = '';
+        isLoading.value = false;
+        outputLoading.value = false;
+        ElMessage({
+          message: '内容输出异常，请重新生成！',
+          type: 'error',
+        })
+        throw err
+
       },
       onclose(date) {
         console.log('guanle123');
+        isClick.value = false
         ctrl.abort(); // 结束会话
         
         outputLoading.value = false;
@@ -685,19 +706,7 @@ const handleSend = async () => {
         detailsId.value = null;
         console.log('guanle');
         
-      },
-      onerror(err) {
-        // console.log(err);
-        textData.value = '';
-        markdownContent.value = '';
-        compiledMarkdown.value = '';
-        textData.value = '';
-        isLoading.value = false;
-        outputLoading.value = false;
-        handleStop();
-        ctrl.abort(); // 结束会话
-        // ctrl.close(); // 结束会话
-      },
+      }
     }
   );
   //  发送后清空表单
@@ -804,31 +813,20 @@ const scrollToBottom = () => {
     scrollTar.scrollTop = scrollTar.scrollHeight;
   }
 };
-const scrollToTop=()=> {
-  const scrollTar = scrollTarget.value;
-  // console.log(scrollTar.scrollHeight,scrollTar.clientHeight)
-  // scrollTar.scrollTo({ top: scrollTar.scrollHeight+500, behavior: 'smooth' });
-  if(scrollTar){
-    nextTick(()=>{
-      scrollTar.scrollTop = scrollTar.scrollHeight;
-    })
-    // scrollTar.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
-  
-  
-}
+
 // 停止生成
 const handleStop = () => {
   // if (typingDone.value) {
+    ctrl.abort(); // 结束会话
   outputLoading.value = false;
   // isSend.value = false
   hadlechatStop();
   clearInterval(typingInterval.value);
   chatDataArr.value[chatDataArr.value.length - 1].content =
-    compiledMarkdown.value;
+  compiledMarkdown.value;
   store.setChatDataList(chatDataArr.value);
   typingDone.value = false;
-  ctrl.abort(); // 结束会话
+  
   // }
 };
 const hadlechatStop = async () => {
@@ -863,13 +861,14 @@ const handleKeyDown = (event) => {
 };
 // 触发发送信息按钮
 const handleEnter = (e) => {
+  // 如果正在生成禁止回车发送
+  if(isClick.value) return
   if (e.target.value !== undefined) {
     textVal.value = e.target.value.replace(/\s+/g, '');
     if (textVal.value !== '' && !e.shiftKey) {
       if (e.keyCode === 13 || e.keyCode === 108) {
         clearInterval(typingInterval.value);
         scrollToBottom();
-        // scrollToTop();
         handleSend();
       }
     }
@@ -884,6 +883,19 @@ const handleInput = (event) => {
       top: scrollBehavior,
       behavior: 'smooth', // 平滑滚动
     });
+    const textarea = textareaRef.value;
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+      if (textarea.offsetHeight < 20) {
+        textarea.style.height = '20px';
+      } else if (textarea.offsetHeight > 100) {
+        textarea.style.height = '100px';
+      }
+      // 限制输入最多的字数
+      if (textVal.value.length > maxNum.value) {
+        textVal.value = textVal.value.slice(0, maxNum.value);
+      }
+      textNum.value = textVal.value.length;
   }
 };
 // 默认头像
@@ -941,7 +953,10 @@ const handleCopy = () => {
 };
 // 更新
 const handleUp = () => {
-  handleUpdate();
+  // handleUpdate();
+  console.log(isClick.value)
+  if(isClick.value) return
+  handleSend()
 };
 onUnmounted(() => {
   ctrl.abort(); // 结束会话
@@ -1045,5 +1060,28 @@ onUnmounted(() => {
       }
     }
   }
+}
+
+.chatContainer h1,
+.chatContainer h2,
+.chatContainer h3,
+.chatContainer h4,
+.chatContainer h5,
+.chatContainer h6 {
+  color: #2c3e50;
+}
+
+.chatContainer code {
+  background-color: #f5f5f5;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.chatContainer pre {
+  background-color: #272822;
+  color: #f8f8f2;
+  padding: 15px;
+  overflow-x: auto;
+  border-radius: 8px;
 }
 </style>

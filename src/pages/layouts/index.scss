@@ -141,15 +141,20 @@
           transition: none !important;
           width: 100%;
         }
-        .textPadP{
-          padding-bottom: 20px;
-        }
+        
         .textarea{
+          position: relative;
+          &.textPad{
+            padding-bottom: 20px;
+          }
           textarea{
             width: 100%;
             border: none;
             outline: none;
             resize: none;
+            line-height: 20px;
+            font-family: -apple-system, BlinkMacSystemFont !important;
+            color: #000;
             &:focus,&:active{
               border: none;
               outline: none;
@@ -170,6 +175,18 @@
           &::-webkit-scrollbar-track {
             background-color: #fff; /* 轨道背景色 */
           }
+          }
+          
+          .textNum{
+            display: none;
+            position: absolute;
+            right: 10px;
+            bottom: 10px;
+          }
+          .textShow{
+            display: block;
+            background: #fff;
+            padding: 3px 8px;
           }
         }
         .el-textarea__inner{
@@ -281,7 +298,7 @@
     
   }
   .chitchatBox{
-    padding: 0px 15px 20px;
+    padding: 0px 6px 20px 20px;
     // height: 600px;
     // background: #F9FAFC;
     // border-radius: 12px;
@@ -318,11 +335,22 @@
           }
         }
        .chatContainer{
-        height: 500px;
+        max-height: 500px;
         overflow-y: auto;
+        padding-right: 20px;
         
-        &::-webkit-scrollbar{
-            display: none;
+        &::-webkit-scrollbar {
+          width: 3px;  /* 滚动条宽度 */
+          height: 8px; /* 滚动条高度 */
+          margin-left: 0;
+          margin-right: 0px;
+        }
+        &::-webkit-scrollbar-thumb {
+          border-radius: 2.5px; /* 圆角 */
+          background-color: #E7E7E7; /* 滑块颜色 */
+        }
+        &::-webkit-scrollbar-track {
+          background-color: transparent; /* 轨道背景色 */
         }
         .questionContainer{
             display: flex;
@@ -361,7 +389,7 @@
         .answerContainer{
             // background: #fff;
             // border-radius: 3px 18px 18px 18px;
-            padding: 10px 15px;
+            padding: 10px 0;
             margin-top: 12px;
             position: relative;
             .conIconBox{
@@ -648,13 +676,55 @@
     }
   }
   .markdown-body {
-
+   
     white-space: pre; /* 保留空白符 */
     overflow: hidden; /* 隐藏溢出内容 */
     display: inline-block;
     white-space: pre-wrap; /* 保留换行符 */
-    line-height: 20px;
-    :deep(ol,ul){
+    line-height: 24px;
+    &>div{
+      display: flex;
+    }
+    :deep(h1,h2,h3,h4,h5,h6,h7){
+      font-size: 14px;
+      font-weight: 700;
+    }
+    :deep(.custom-class-tit){
+    font-size: 16px;
+    // margin-block-start: 1em;
+    // margin-block-end: 1em;
+    // margin-inline-start: 0px;
+    // margin-inline-end: 0px;
+    font-weight: bold;
+    margin-block:0;
+      margin-inline:0;
+      padding-block:0;
+      padding-inline:0;
+    unicode-bidi: isolate;
+    }
+    :deep(.custom-class-ullist){
+      li{
+        padding-bottom: 10px;
+        &:last-child{
+          padding-right: 0;
+        }
+      }
+    }
+    :deep(p){
+      margin-block:0;
+      margin-inline:0;
+      padding-block:0;
+      padding-inline:0;
+      unicode-bidi:normal
+    }
+    :deep(ul){
+      margin-block:0;
+      margin-inline:0;
+      padding-block:0;
+      padding-inline:0;
+      display:grid;
+    }
+    :deep(ol){
       margin-block-start: 0;
       margin-block-end: 0;
       margin-inline-start: 0px;
@@ -769,6 +839,29 @@
   .hide-cursor .cursor {
     display: none; /* 隐藏光标 */
   }
+  .three-dots {
+    --size: 20px;
+    display: inline-block;
+    font-size: var(--size);
+    height: var(--size);
+    line-height: var(--size);
+    overflow: hidden;
+    vertical-align: bottom;
+    color: #19232B;
+  }
+  
+  .three-dots::after {
+    display: inline-block;
+    white-space: pre;
+    content: '\A.\A..';
+    animation: loop 1s steps(4) infinite;
+  }
+  
+  @keyframes loop {
+    to {
+      transform: translateY(calc(0px - var(--size) * 4));
+    }
+  }  
   @keyframes fadeIn {
     from{
       opacity: 0;
