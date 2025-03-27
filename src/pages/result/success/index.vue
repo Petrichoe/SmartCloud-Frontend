@@ -16,6 +16,7 @@ import IconSuccess from "@/assets/icon_success.svg";
 <style lang="scss">
 .success {
   margin: 30px auto 40px auto;
+  padding: 30px 0;
   border-radius: 8px;
   .title {
     font-weight: 600;

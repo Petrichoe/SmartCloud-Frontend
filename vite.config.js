@@ -33,13 +33,13 @@ export default defineConfig((mode) => {
       host: '0.0.0.0',
       proxy: {
         '/api': {
-          target: 'https://apifoxmock.com/m1/5754259-5437482-default', // pip正式环境
-
+          // target: 'https://apifoxmock.com/m1/5754259-5437482-default', // pip正式环境
+          target:'http://api.tianji.com',
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, '')
         },
         '/img-tx': {
-          target:  'http://172.17.2.76:10010', // 'http://172.17.2.134',
+          target:  'http://api.tianji.com', // 'http://172.17.2.134',
           changeOrigin: true,
           // rewrite: (path) => {
           //   return path.replace(/^\/img-tx/, '')

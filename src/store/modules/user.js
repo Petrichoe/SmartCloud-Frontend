@@ -10,12 +10,13 @@ export const useUserStore = defineStore('user', {
     userInfo: JSON.parse(sessionStorage.getItem("userInfo")),
     sessionInfo: sessionStorage.getItem("sessionInfo")!=='undefined'?JSON.parse(sessionStorage.getItem("sessionInfo")):{},
     // sessionInfo: sessionStorage.getItem("sessionInfo"),
-    chatDataList:JSON.parse(sessionStorage.getItem("chatDataList"))
+    chatDataList:JSON.parse(sessionStorage.getItem("chatDataList")),
+    orderData:sessionStorage.getItem("orderData")
   }),
   persist: {
     enabled: true,
     strategies: [
-      { storage: sessionStorage, paths: ["token", "userInfo","sessionInfo","chatDataList"] },
+      { storage: sessionStorage, paths: ["token", "userInfo","sessionInfo","chatDataList",'orderData'] },
     ],
   },
   getters: {
@@ -32,6 +33,9 @@ export const useUserStore = defineStore('user', {
     getChatDataList: (state) => {
       
       return state.chatDataList;
+    },
+    getOrderData: (state) => {
+      return state.orderData;
     },
   },
   actions: {
@@ -63,6 +67,11 @@ export const useUserStore = defineStore('user', {
     async setChatDataList(chatDataList) {
       this.chatDataList = chatDataList
       sessionStorage.setItem('chatDataList', JSON.stringify(chatDataList));
+    },
+    // 新建聊天记录
+    async setOrderData(orderData) {
+      this.orderData = orderData
+      sessionStorage.setItem('orderData', orderData);
     },
   },
   

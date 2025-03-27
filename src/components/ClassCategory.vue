@@ -105,7 +105,7 @@ import {ref} from 'vue';
     }
     .tit{
       display: inline-block;
-      width: 120px;
+      // width: 120px;
       overflow: hidden;
       height: 20px;
       border-right:none;

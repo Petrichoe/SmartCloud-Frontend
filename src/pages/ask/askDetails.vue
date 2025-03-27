@@ -24,7 +24,18 @@
               <div class="answer fx">
                 <img :src="store.getUserInfo.icon" alt="" srcset="">
                 <div class="fx-1">
-                  <el-input v-model="description" rows="11" type="textarea" @input="ruleshandle" maxlength="500" show-word-limit placeholder="请发表高见" />
+                  <div class="answerCon">
+                    <el-input v-model="description" rows="11" type="textarea" @input="ruleshandle" maxlength="500" show-word-limit placeholder="请发表高见" resize="none" />
+                    <div class="aiCon">
+                      <div class="aiTip"><span class="serverIcon"></span>创作<span class="line">|</span></div>
+                      <div class="aiTag" :class="description?'tagHover':''">
+                        <span @click="handleAi(1)"><i class="iconfont icon-a-AIbangxie2x1"></i>AI帮写</span>
+                        <span @click="handleAi(2)"><i class="iconfont icon-a-AIxuxie2x1"></i>AI续写</span>
+                        <span @click="handleAi(3)"><i class="iconfont icon-a-AIrunse2x1"></i>AI润色</span>
+                        <span @click="handleAi(4)"><i class="iconfont icon-a-Aijingjian2x1"></i>AI精简</span>
+                      </div>
+                    </div>
+                  </div>
                   <div class="fx-sb fx-al-ct">
                     <div><el-checkbox v-model="anonymity" label="匿名提问" size="large" /></div>
                     <div class="subCont">
@@ -41,12 +52,17 @@
               <div class="answerItems">
                 <div class="items" v-for="item in questionData" :key="item.id">
                   <div class="fx-al-ct">
-                    <img class="img" v-if="item.userIcon" :src="item.userIcon" alt="">
-                    <img class="img" v-else src="/src/assets/anonymity.png" alt="">
-                    <span class="ft-cl-des">{{item.userName || '匿名'}}</span>
+                    
+                    <span v-if="item.userId==='9999'" class="serverIcon"></span>
+                    <span v-else>
+                      <img class="img" v-if="item.userIcon" :src="item.userIcon" alt="">
+                      <img class="img" v-else src="/src/assets/anonymity.png" alt="">
+                    </span>
+                    
+                    <span class="ft-cl-des">{{item.userName || '匿名'}}</span><span v-if="item.userId==='9999'" class="bt">AI自动回复</span>
                   </div>
                   <div class="cont">
-                    <div class="marg-bt-10">{{item.content}}</div>
+                    <div class="marg-bt-10" v-html="md.render(item.content)"></div>
                     <div class="fx-sb">
                       <div class="ft-cl-des">{{item.createTime}}</div>
                       <div>
@@ -61,11 +77,15 @@
                   <div class="replyCont" v-show="replyData && isReplay == item.id">
                     <div class="items" v-for="it in replyData" :key="it.id">
                       <div class="fx-al-ct">
-                        <img class="img" v-if="it.userIcon" :src="it.userIcon" alt="">
-                        <img class="img" v-else src="/src/assets/anonymity.png" alt="">
+                        <span v-if="item.userId==='9999'" class="serverIcon"></span>
+                        <span v-else>
+                          <img class="img" v-if="it.userIcon" :src="it.userIcon" alt="">
+                          <img class="img" v-else src="/src/assets/anonymity.png" alt="">
+                        </span>
                         <span class="ft-cl-des"> {{it.userName || '匿名'}} 回复 {{it.targetUserName || "匿名用户"}} </span>
                       </div>
                       <div class="cont">
+                        <!--  v-html="md.render(it.content)" -->
                         <div class="marg-bt-10">{{it.content}}</div>
                         <div class="fx-sb">
                           <div class="ft-cl-des">{{it.createTime}}</div>
@@ -98,11 +118,16 @@
       <div class="dialogReplyCont" v-infinite-scroll="load" style="overflow: auto" :infinite-scroll-disabled="disabled">
         <div class="items" v-for="it in replyData" :key="`ss${it.id}`">
           <div class="fx-al-ct">
-            <img class="img" v-if="it.userIcon" :src="item.userIcon" alt="">
-            <img class="img" v-else src="/src/assets/anonymity.png" alt="">
+            <span v-if="item.userId==='9999'" class="serverIcon"></span>
+            <span v-else>
+              <img class="img" v-if="it.userIcon" :src="item.userIcon" alt="">
+              <img class="img" v-else src="/src/assets/anonymity.png" alt="">
+            </span>
+            
             <span class="ft-cl-des"> {{it.userName || '匿名'}} 回复 {{it.targetUserName || "匿名用户"}} </span>
           </div>
           <div class="cont">
+          <!--  v-html="md.render(it.content)" -->
             <div class="marg-bt-10">{{it.content}}</div>
             <div class="fx-sb">
               <div class="ft-cl-des">{{it.createTime}}</div>
@@ -120,6 +145,16 @@
          <p class="fx-ct ft-14 ft-cl-des" v-if="replaynoMore">没有更多了</p>
       </div>
   </el-dialog>
+  <!-- ailoading -->
+  <el-dialog v-model="isAiLoading" title="" class="aiPopUp" width="248px" top="15vh" :show-close="false">
+    <div class="aiLoad">
+      <div class="iconLoad"><img src="@/assets/icon/loadIcon.gif" /></div>
+      <div class="text">内容生成中，请稍后…</div>
+      <div class="loadBtn"><span class="bt ft-14" @click="handleCloseAi">取消</span></div>
+    </div>
+  </el-dialog>
+  
+  <!-- end -->
   </div>
 </template>
 <script setup>
@@ -128,19 +163,137 @@ import { onMounted, reactive, ref, computed } from "vue";
 import { ElMessage } from "element-plus";
 import { useRoute } from "vue-router";
 import { getQuestionsDetails, postAnswers, getReply, putLiked } from "@/api/classDetails.js";
+import {textSession,getChatTemplates,getChatText} from '@/api/intelligent.js';
 import RelatedQuestions from './components/RelatedQuestions.vue'
 import ReplayForm from './components/ReplayForm.vue'
 import { useUserStore } from '@/store'
+import MarkdownIt from 'markdown-it';
+import hljs from 'highlight.js/lib/core';
+// 导入语言模块和支持的表情符号
+import javascript from 'highlight.js/lib/languages/javascript';
+import 'highlight.js/styles/monokai-sublime.css'; // 选择你喜欢的主题
+import 'highlight.js/styles/github.css'; // GitHub风格
+import 'highlight.js/styles/dark.css'; // Solarized Dark风格
+import tocPlugin from 'markdown-it-table-of-contents';
+import anchorPlugin from 'markdown-it-anchor';
+import 'highlight.js/styles/default.css'; // 你可以根据需要选择其他主题
 const store = useUserStore();
 
 const route = useRoute()
 const askInfo = ref()
+// 注册语言
+hljs.registerLanguage('javascript', javascript);
 
+// 初始化 markdown-it 实例并配置插件
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true,
+  breaks: true, 
+  highlight: function (str, lang) {
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        // 去除多余空格
+        // const trimmedStr = str
+        //   .split('\n')
+        //   .map((line) => line.trimStart())
+        //   .join('\n')
+        //   .trim();
+          console.log(str,458)
+        return `<pre class="hljs"><code>${
+          hljs.highlight(str, { language: lang }).value
+        }</code></pre>`;
+      } catch (__) {}
+    }
+
+    return '';
+  },
+})
+  // .use(tocPlugin)
+  // .use(anchorPlugin);
+// // 自定义渲染器：重写 h1, h2, h3 标签的渲染规则，并去除空格
+// ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'h7', 'div', 'p'].forEach((tag) => {
+//   md.renderer.rules[`${tag}_open`] = function (
+//     tokens,
+//     idx,
+//     options,
+//     env,
+//     self
+//   ) {
+//     const token = tokens[idx];
+
+//     // 添加额外的属性、类名等
+//     return `<${token.tag} class="custom-${tag}">`;
+//   };
+
+//   md.renderer.rules[`${tag}_close`] = function (
+//     tokens,
+//     idx,
+//     options,
+//     env,
+//     self
+//   ) {
+//     const token = tokens[idx];
+//     return `</${token.tag}>`;
+//   };
+
+//   // 修改文本内容去除首尾空格
+//   md.renderer.rules[`${tag}`] = function (tokens, idx, options, env, self) {
+//     const token = tokens[idx];
+//     if (token.type === `${tag}`) {
+//       // 去除首尾空格
+//       token.content = token.content.trim();
+//     }
+//     return self.renderToken(tokens, idx, options);
+//   };
+// });
+// // 自定义渲染规则，针对链接标签
+// md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
+//   // 添加 target="_blank" 和 rel="noopener" 到所有的 <a> 标签
+//   tokens[idx].attrPush(['target', '_blank']);
+//   tokens[idx].attrPush(['rel', 'noopener']);
+//   // 使用默认的方式渲染标签
+//   return self.renderToken(tokens, idx, options);
+// };
+// // 覆盖默认的元素渲染规则、元素默认会有一行的空白间距
+// // 覆盖段落渲染规则
+// md.renderer.rules.paragraph_open = () => '<p>';
+// md.renderer.rules.paragraph_close = () => '</p>';
+
+// // 覆盖列表渲染规则
+// md.renderer.rules.bullet_list_open = () => '<ul>';
+// md.renderer.rules.bullet_list_close = () => '</ul>';
+// md.renderer.rules.list_open = () => '<ol>';
+// md.renderer.rules.list_close = () => '</ol>';
+// md.renderer.rules.list_item_open = () => '<li>';
+// md.renderer.rules.list_item_close = () => '</li>';
+
+// // 覆盖代码块渲染规则
+// md.renderer.rules.code_block = (tokens, idx) => {
+//   const content = tokens[idx].content.trim();
+//   return `<pre><code>${content}</code></pre>`;
+// };
+// // 添加自定义规则
+// md.core.ruler.push('custom-class-rule', function (state) {
+//   const tokens = state.tokens;
+//   tokens.forEach((token) => {
+//     //  && token.level === 1
+//     if (token.type === 'heading_open') {
+//       // 为 h1 标签添加 custom-class 类
+//       token.attrSet('class', ['custom-class-tit']);
+//     } else if (token.type === 'bullet_list_open') {
+//       token.attrSet('class', ['custom-class-ullist']);
+//     } else if (token.type === 'ordered_list_open') {
+//       token.attrSet('class', ['custom-class-ollist']);
+//     }
+//   });
+// });
 onMounted(() => {
   // 获取问题详情
   getQuestionsDetailsData()
   // 获取回答的列表
   getAllQuestionsData()
+  getTextType()
 })
 
 const dialogTableVisible = ref(false)
@@ -376,5 +529,73 @@ await putLiked({bizId:item.id, liked:!item.liked, bizType: "QA"})
       });
     });
 }
+// 文本聊天类型
+const textTypeData=ref({})
+const getTextType =async()=>{
+  const res = await getChatTemplates()
+  if(res.code===200){
+    textTypeData.value=res.data
+  }
+}
+const isAiLoading = ref(false)
+let index = ref(0); // 当前显示的字符索引
+let timer = ref(null); // 定时器
+// 创作
+const handleAi=async(num)=>{
+  
+  if(description.value){
+    isAiLoading.value = true
+    let data = ''
+    if(num===1){
+      // 帮写
+      data=textTypeData.value.helpedWrite.replace('$input', description.value)
+    }else if(num===1){
+      // 续写
+      data=textTypeData.value.continuedWrite.replace('$input', description.value)
+    }else if(num===1){
+      // 润色
+      data=textTypeData.value.polish.replace('$input', description.value)
+    }else{
+      // 精简
+      data=textTypeData.value.streamline.replace('$input', description.value)
+    }
+     await getChatText(data).then(res=>{
+      if(res.code===200){
+        // startTypewriter(res.data)
+        description.value =  res.data
+        isAiLoading.value = false
+        ElMessage({
+          message:'内容生成成功！',
+          type: 'success'
+        });
+      }
+      
+     }).catch(err=>{
+      ElMessage({
+          message:'内容生成失败！',
+          type: 'error'
+        });
+     })
+    
+  }
+}
+// 打字机效果
+// 开始打字机效果
+const startTypewriter = (val) => {
+      timer.value = setInterval(() => {
+        if (index.value < val.length) {
+          description.value += val.charAt(index); // 逐字添加
+          index.value++;
+        } else {
+          clearInterval(timer.value); // 停止定时器
+        }
+      }, 100); // 每 100ms 显示一个字
+    };
+// 关闭load弹层
+const handleCloseAi=()=>{
+  isAiLoading.value = false
+}
+
+
 </script>
 <style lang="scss" src="./index.scss"></style>

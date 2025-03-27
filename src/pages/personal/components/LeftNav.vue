@@ -55,7 +55,7 @@ const logout = () => {
   border-radius: 8px;
   margin-right: 20px;
   a{
-    width: 100%;
+    width: 155px;
     padding: 13px 15px 13px 20px;
     border-bottom: 1px solid #EEEEEE;
     font-size: 14px;

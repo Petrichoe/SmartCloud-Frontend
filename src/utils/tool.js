@@ -53,3 +53,18 @@ export const amountConversion = (item) => {
   } 
   return amount
 }
+// 获取年月日
+export const dayFormat = (time) => {
+  const date = new Date(time); // 获取日期
+
+let year = date.getFullYear(); // 获取年份（4 位数）
+let month = date.getMonth() + 1; // 获取月份（0-11，需要 +1）
+let day = date.getDate(); // 获取日期（1-31）
+if(month<10){
+  month='0'+month
+}
+if(day<10){
+  day='0'+day
+}
+return `${year}-${month}-${day}`
+}

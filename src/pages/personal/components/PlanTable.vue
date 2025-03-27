@@ -42,9 +42,11 @@ defineProps({
 <style lang="scss" scoped>
 .planTable{
   margin-top: 30px;
-  border: solid 1px #ebeef5;
-  border-bottom: none;
   line-height: 30px;
+  .el-table{
+    border: 1px solid #ebeef5;
+    border-bottom: none;
+  }
   img{
     width: 236px;
     height: 132px;
