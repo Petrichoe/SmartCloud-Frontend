@@ -185,16 +185,6 @@
             @ended="onAudioEnded"
             @timeupdate="updateHighlight"
           ></audio>
-          <div
-            v-for="(word, index) in textArray"
-            :key="index"
-            :class="{ highlight: currentWordIndex === index }"
-          >
-            {{ word }}
-          </div>
-          <!-- <button @click="playAudio">播放</button>
-          <button @click="pauseAudio">暂停</button>
-          <p>音频状态: {{ isAudioLoaded ? '已加载' : '加载中...' }}</p> -->
         </div>
         <!-- 聊天对话 -->
         <div
@@ -450,14 +440,6 @@
                                 语音播报<span class="arrow"></span>
                               </div>
                             </span>
-
-                            <!-- <audio
-                            id="audio"
-                              ref="audio"
-                              :src="audioUrl"
-                              @loadeddata="onAudioLoaded"
-                            ></audio> -->
-                            <!-- <audio ref="audioElement" :src="audioUrl" @loadeddata="onAudioLoaded"  controls style="display:none"></audio> -->
                           </span>
                           <span
                             class="copyIcon"
@@ -656,14 +638,6 @@
                     ></div>
                   </div>
                 </el-tooltip>
-                <!-- <div class="voice-container">
-                    <div class="voice-line"></div>
-                    <div class="voice-line"></div>
-                    <div class="voice-line"></div>
-                    <div class="voice-line"></div>
-                    <div class="voice-line"></div>
-                  </div> -->
-
                 <span class="line"></span>
                 <el-button
                   class="stopIcon"
@@ -694,30 +668,25 @@
 <script setup>
 import Footer from '@/components/Footer.vue';
 import Header from '@/components/Header.vue';
-import axios from 'axios';
 import {
   onMounted,
   onUnmounted,
   onUpdated,
   ref,
-  watchEffect,
   computed,
   nextTick,
-  unref,
   watch,
 } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   ElMessage,
-  ElMessageBox,
-  ClickOutside as vClickOutside,
+  ElMessageBox
 } from 'element-plus';
 import { useUserStore } from '@/store';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { getClassDetails } from '@/api/classDetails.js';
 import { setOrder } from '@/api/order.js';
 import { dayFormat } from '@/utils/tool.js';
-// import sdk from "microsoft-cognitiveservices-speech-sdk";
 import MarkdownIt from 'markdown-it';
 import hljs from 'highlight.js'; // 只导入核心库
 import javascript from 'highlight.js/lib/languages/javascript';
@@ -726,18 +695,10 @@ import 'highlight.js/styles/monokai-sublime.css'; // 选择你喜欢的主题
 import 'highlight.js/styles/github.css'; // GitHub风格
 import 'highlight.js/styles/dark.css'; // Solarized Dark风格
 import 'highlight.js/styles/github-dark-dimmed.css'; // 使用更美观的主题
-// import emojiPlugin from 'markdown-it-emoji';
 import tocPlugin from 'markdown-it-table-of-contents';
 import anchorPlugin from 'markdown-it-anchor';
 import defaultImage from '@/assets/icon.jpeg';
-import defaultAudio from '@/assets/katiesteve.wav';
 import 'highlight.js/styles/default.css'; // 你可以根据需要选择其他主题
-import AzureTtsService from './azureTtsService';
-import RecordRTC from 'recordrtc';
-// import { recognizeSpeech } from './speechService.js';
-// import * as sdk from 'microsoft-cognitiveservices-speech-sdk';
-// import markdownContent from '@/assets/your-markdown-file.md';
-import { convertWebMToWav } from './audioConverter.js';
 // 获取接口
 import {
   newSession,
@@ -751,31 +712,20 @@ import {
   audioStt,
   getChatTemplates,
   getChatText,
-  getChat,
 } from '@/api/intelligent.js';
-import { Failed } from '@element-plus/icons-vue';
-import { Howl } from 'howler';
 const store = useUserStore(); //新建会话时把获取的信息存起来
 const router = useRouter();
 const route = useRoute();
 const isShow = ref(false); // 默认小图显示
 const dialogVisible = ref(false); //对话弹层
-const dialogRef = ref(null);
-let isDragging = ref(false);
-let startPos = { x: 0, y: 0 };
-let offset = { x: 0, y: 0 };
 const outputLoading = ref(false); //ai内容生成中
-const isTypewriting = ref(true); //打字是否结束
 const textVal = ref(''); //表单内容
 const chatDataArr = ref([]); //聊天内容
 const scrollTarget = ref(null); //对话框的ref
 const scrollContainer = ref(null);
 const baseData = ref({});
-// const recognitionResult = ref("");
 const isLoading = ref(false);
-const currentIndex = ref(0);
 const textData = ref('');
-const typingSpeed = ref(80); //打字速度，单位毫秒
 const typingDone = ref(false);
 const isSend = ref(false);
 const isEnd = ref(false); //内容是否展示完毕，用来显示点赞，更新按钮
@@ -783,7 +733,6 @@ const isEnd = ref(false); //内容是否展示完毕，用来显示点赞，更�
 const textElement = ref(null);
 const isPraise = ref(false); //是否点过赞
 const detailsId = ref(null); //详情页id
-const hrefLink = ref(null);
 const userInfo = ref(store.getUserInfo); //用户数据
 const token = store.token;
 const isClick = ref(false); //内容正在生成中，回车是否可以发送内容
@@ -795,21 +744,16 @@ const overflowY = ref('hidden'); // 滚动条控制
 const maxLines = 5; // 最大显示行数
 
 const audioUrl = ref(null);
-const azureService = ref(null);
 
 const isPlaying = ref(false);
 
 const audioElement = ref(null);
 const isAudioLoaded = ref(false);
-const orderData = ref('');
-// const orderStr = ref('');
 
 const historyRef = ref(); //历史记录按钮ref
-const popoverRef = ref(); //历史记录列表ref
 const isActive = ref('');
 const historyData = ref([]); //左侧菜单数据
 const isClickEdit = ref(false); //是否出发了编辑按钮
-const myPopover = ref(null);
 const questionList = ref([]);
 const showUpdateTooltip = ref(false); //控制更新提示框
 const showCopyTooltip = ref(false); //控制复制提示框
@@ -839,18 +783,11 @@ const handleIconMouseleave = (type, index) => {
     showUpdateTooltip.value = false;
   }
 };
-// Azure 配置（建议存放到环境变量）
-const azure = {
-  key: 'REMOVED',
-  region: 'eastasia',
-};
 const playIndex = ref(0);
 const onAudioLoaded = () => {
   isAudioLoaded.value = true;
-  console.log(isAudioLoaded.value);
 };
 const onAudioEnded = () => {
-  console.log('音频播放已结束');
   isPlaying.value = false;
   audioUrl.value = null;
   // 在这里可以添加其他你需要执行的操作
@@ -865,9 +802,6 @@ const md = new MarkdownIt({
   linkify: true,
   typographer: true,
   highlight: function (str, lang) {
-    // console.log(str, 1);
-    // console.log(lang, 2);
-    // console.log(hljs.getLanguage(lang), 3);
     if (lang && hljs.getLanguage(lang)) {
       try {
         return `<pre class="code-block"><code class="hljs ${lang}">${
@@ -879,23 +813,6 @@ const md = new MarkdownIt({
       str
     )}</code></pre>`;
   },
-  // highlight: function (str, lang) {
-  //   if (lang && hljs.getLanguage(lang)) {
-  //     try {
-  //       // 去除多余空格
-  //       const trimmedStr = str
-  //         .split('\n')
-  //         .map((line) => line.trimStart())
-  //         .join('\n')
-  //         .trim();
-  //       return `<pre class="hljs"><code>${
-  //         hljs.highlight(trimmedStr, { language: lang }).value
-  //       }</code></pre>`;
-  //     } catch (__) {}
-  //   }
-
-  //   return '';
-  // },
 })
   .use(tocPlugin)
   .use(anchorPlugin);
@@ -949,7 +866,6 @@ md.renderer.rules.paragraph_open = () => '<p>';
 md.renderer.rules.paragraph_close = () => '</p>';
 
 // 覆盖列表渲染规则
-const orderedListRE = /^(\d+)\.\s*(.*)/;
 md.renderer.rules.bullet_list_open = () => '<ul class="listUl">';
 md.renderer.rules.bullet_list_close = () => '</ul>';
 md.renderer.rules.list_open = () => '<ol>';
@@ -977,10 +893,7 @@ md.core.ruler.push('custom-class-rule', function (state) {
   });
 });
 
-const ids = ref([]);
 const compiledMarkdown = ref('');
-// const compiledMarkdownData = ref('')
-const markdownData = ref(''); //md代码
 const isTypingDone = computed(
   () => !typingDone.value && compiledMarkdown.value.length > 0
 );
@@ -992,15 +905,6 @@ const getLineHeight = (textareaRef) => {
   const paddingBottom = parseInt(style.paddingBottom, 10);
   return lineHeight + paddingTop + paddingBottom;
 };
-// const compiledMarkdown = computed(
-//   () => {
-//       if(compiledMarkdownData.value!==''){
-//         return md.render(compiledMarkdownData.value);
-//       }
-
-//   }
-// );
-// markdownContent.value
 watch(compiledMarkdown, () => {
   // 在 DOM 更新后手动触发 highlight.js
   nextTick(() => {
@@ -1028,27 +932,8 @@ onMounted(() => {
   }
 });
 onUpdated(() => {
-  // 在 DOM 更新后手动触发 highlight.js
-  // nextTick(() => {
-  //     document.querySelectorAll('pre code').forEach((block) => {
-  //       // 移除 data-highlighted 属性以便重新高亮
-  //       delete block.dataset.highlighted; // 移除 data-highlighted 属性
-  //       hljs.highlightBlock(block);
-  //     });
-  // });
   scrollToBottom();
 });
-
-// // 给默认聊天数组的超连接加上_blank，以新窗口打开
-// const targetLind = ()=>{
-//   if(scrollTarget.value){
-//           const links = scrollTarget.value.querySelectorAll('a');
-//           links.forEach(function(link) {
-//             link.setAttribute("target", "_blank");
-
-//           });
-//         }
-// }
 
 // 新建窗口获取id
 const getSession = async () => {
@@ -1074,9 +959,6 @@ const getList = async (val) => {
       list: value,
     }));
     historyData.value = objectArray.reverse();
-    // if (!val && isActive.value === '0-0') {
-    //   baseData.value.sessionId = historyData.value[0].list[0].sessionId;
-    // }
     if (isActive.value !== '') {
       historyData.value.forEach((val, index) => {
         val.list.forEach((obj, i) => {
@@ -1086,7 +968,6 @@ const getList = async (val) => {
         });
       });
     }
-    //getListData(baseData.value.sessionId);
   }
 };
 // 文本聊天类型
@@ -1117,8 +998,6 @@ const getListData = async (id) => {
     nextTick(async () => {
       let processedData = listDataArr.value.map(async (val) => {
         if (val.type === 'ASSISTANT') {
-          // const dadaHtml = md.render(val.content);
-          // const extractArr = extractStrings(val.content);
           if (val.params&&val.params.prePlaceOrder !== undefined) {
             // 处理订单逻辑
             let idsArray = val.params.prePlaceOrder.courseIds;
@@ -1150,55 +1029,7 @@ const getListData = async (id) => {
               cardDetails: details, // 添加details属性
             };
           }
-          // // // 获取的后台内容
-          // // findATagsWithAttributes(markdownData.value);
-          // if(objArr.value!==undefined){
-          //   objArr.value.forEach((val)=>{
-          //     planDataIds.value.push(val.id)
-          //   })
-          // }
-          // if (extractArr.length > 0) {
-          //   // const orderStr = extractArr[1].replace(/aram\|order\|/, '');
-          //   // // 分割成键值对数组
-          //   // const entries = orderStr.split('#');
-          //   // // 转换为对象
-          //   // const obj = entries.reduce((acc, entry) => {
-          //   //   const [key, value] = entry.split('=');
-          //   //   acc[key] = value !== '' ? value : null; // 如果值为空，则赋值为null或其他你认为合适的默认值
-          //   //   return acc;
-          //   // }, {});
-          //   // let idsArray = obj.courseIds.split(',');
-          //   // let details = await Promise.all(
-          //   //   idsArray.map((id) => getDetails(id))
-          //   // );
-          //   // // 返回更新后的对象
-          //   // val.content = removeSpecialSubstrings(val.content);
-          //   // return {
-          //   //   ...val, // 保留原有的info和其他属性
-          //   //   ids: idsArray, // 更新ids为数组
-          //   //   orderText: obj,
-          //   //   cardType: 1,
-          //   //   cardOrderDetails: details, // 添加details属性
-          //   // };
-          // } else {
-          //   // 使用正则表达式匹配info字段中的所有ID
-          //   let matches = md.render(dadaHtml).match(/id=(\d+)/g);
-          //   // 提取ids
-          //   let idsArray = matches
-          //     ? matches.map((match) => match.replace('id=', ''))
-          //     : [];
-          //   // 获取每个id的详情
-
-          //   let details = await Promise.all(
-          //     idsArray.map((id) => getDetails(id))
-          //   );
-          //   // 返回更新后的对象
-          //   return {
-          //     ...val, // 保留原有的info和其他属性
-          //     ids: idsArray, // 更新ids为数组
-          //     cardDetails: details, // 添加details属性
-          //   };
-          // }
+          
         } else {
           return {
             ...val,
@@ -1228,8 +1059,6 @@ const getCourseLearningData = async (ids) => {
             arrs.cardDetails.push(data);
           }
           chatDataArr.value[chatDataArr.value.length - 1] = arrs;
-
-          // store.setChatDataList(chatDataArr.value);
           nextTick(() => {
             scrollToBottom();
           });
@@ -1264,14 +1093,12 @@ const handleCread = () => {
     clearTimeout(times);
   }, 0);
   clearAudio();
-  // console.log(ctrl);
   if (ctrl) {
     ctrl.abort(); // 结束会话
     handleStop();
   }
 
   if (chatDataArr.value.length > 0) {
-    // baseData.value = {};
     chatDataArr.value = [];
     store.setSessionInfo({});
     store.setChatDataList([]);
@@ -1333,20 +1160,6 @@ const extractStrings = (str) => {
   // 去掉 & 和 #，提取内容
   return matches.map((match) => match.slice(1, -1));
 };
-// const removeSpecialSubstrings = (str) => {
-//   // 使用正则表达式匹配以&开头以#结尾的子串，并替换为空字符串
-//   const regex = /&param[^&]*&/g;
-//   return str.replace(regex, '');
-// };
-// // 保存标题
-// const handleSaveTit = async () => {
-//   const data = chatDataArr.value[0];
-//   const params = {
-//     sessionId: baseData.value.sessionId,
-//     title: data.content,
-//   };
-//   await saveSession(params);
-// };
 const objArr = ref([]);
 const prePlaceOrder = ref({});
 const isClickBtn = ref(false); //禁止连续发送信息
@@ -1355,7 +1168,6 @@ const handleSend = async () => {
   if (isClickBtn.value) return;
   questionList.value =[]
   isClickBtn.value = true;
-  // questionVisible.value = false;
   planDataIds.value = [];
   compiledMarkdown.value = '';
   markdownContent.value = '';
@@ -1363,9 +1175,7 @@ const handleSend = async () => {
     resTextHeight();
     clearTimeout(times);
   }, 0);
-  // orderStr.value = '';
   objArr.value = [];
-  // textVal.value = textVal.value.replace(/\s+/g, '');
   let updateText = null;
   let userObj = {
     type: 'USER',
@@ -1395,7 +1205,6 @@ const handleSend = async () => {
   chatDataArr.value.push(assistantObj);
   isLoading.value = true;
   outputLoading.value = true;
-  // handleSaveTit();
   // 先显示发送的消息
   nextTick(() => {
     scrollToBottom();
@@ -1428,7 +1237,6 @@ const handleSend = async () => {
         isSend.value = true;
         let msgData = JSON.parse(msg.data);
         let objArr = {};
-        // let arr =[]
         if (msgData.eventType === 1003) {
           if (msgData.eventData.prePlaceOrder !== undefined) {
             prePlaceOrder.value = msgData.eventData.prePlaceOrder;
@@ -1436,7 +1244,6 @@ const handleSend = async () => {
             objArr.value = Object.values(msgData.eventData);
           }
           // // 获取的后台内容
-          // findATagsWithAttributes(markdownData.value);
           if (objArr.value !== undefined) {
             objArr.value.forEach((val) => {
               planDataIds.value.push(val.id);
@@ -1447,12 +1254,10 @@ const handleSend = async () => {
             type: 'ASSISTANT',
             content: textData.value,
           };
-          // orderData.value = extractStrings(orderStr.value);
 
           if (planDataIds.value.length > 0) {
             getCourseLearningData(planDataIds.value);
           } else {
-            // if (orderData.value.length > 1) {
             planDataIds.value = [];
             assistantObj = {
               ...assistantObj,
@@ -1460,7 +1265,6 @@ const handleSend = async () => {
               cardType: 1,
             };
             getCourseLearningData(prePlaceOrder.value.courseIds);
-            // }
           }
         } else if (msgData.eventType === 1002) {
           updateText = chatDataArr.value[chatDataArr.value.length - 2].content
@@ -1468,7 +1272,6 @@ const handleSend = async () => {
           ctrl.abort(); // 结束会话
           isSend.value = false;
           isClickBtn.value = false;
-          // // ctrl.close(); // 结束会话
           assistantObj = {
             ...assistantObj,
             content: textData.value,
@@ -1487,21 +1290,15 @@ const handleSend = async () => {
           }, 800);
         } else {
           textData.value += msgData.eventData;
-          // orderStr.value += msgData.eventData;
-
           appendAndType(msgData.eventData);
-          // markdownData.value = md.render(textData.value);
           isClick.value = true;
           scrollShow()
         }
         isClickUpdate.value = false;
       },
       onerror(err) {
-        console.log(err);
         textData.value = '';
-        // orderStr.value = '';
         markdownContent.value = '';
-        // compiledMarkdown.value = '';
         textData.value = '';
         isLoading.value = false;
         outputLoading.value = false;
@@ -1513,14 +1310,11 @@ const handleSend = async () => {
         throw err;
       },
       onclose(date) {
-        console.log(date);
         isClick.value = false;
         ctrl.abort(); // 结束会话
         isEnd.value = false;
         outputLoading.value = false;
-        // compiledMarkdown.value=''
         detailsId.value = null;
-        console.log('guanle');
         // ElMessage({
         //   message: '内容输出异常，请重新生成！',
         //   type: 'error',
@@ -1529,46 +1323,9 @@ const handleSend = async () => {
     });
     //  发送后清空表单
     textVal.value = '';
-    // dynamicHeight.value = `24px`;
   });
 };
 const planDataIds = ref([]);
-// 给回答后的数据a标签加上btarget=_blank，用新窗口打开
-const findATagsWithAttributes = (htmlString) => {
-  // 使用正则表达式匹配 <a> 标签，确保不重复添加 target 属性
-
-  htmlString.replace(/<a([^>]*)>/gi, (match, $1) => {
-    planDataIds.value.push(getId(match.toString()));
-    // planDataIds.value = arr.filter((item, index) => arr.indexOf(item) === index);
-  });
-};
-const getTextBetweenChars = (str, startChar, endChar) => {
-  const startIndex = str.indexOf(startChar);
-  if (startIndex === -1) return ''; // 如果起始字符不存在，返回空字符串
-
-  const endIndex = str.indexOf(endChar, startIndex + 1);
-  if (endIndex === -1) return ''; // 如果结束字符不存在，返回空字符串
-
-  return str.substring(startIndex + 1, endIndex); // 返回起始字符和结束字符之间的部分
-};
-// 获取id
-const getId = (link) => {
-  getTextBetweenChars(link, '?', '"');
-  // 解析查询参数
-  const urlParams = new URLSearchParams(getTextBetweenChars(link, '?', '"'));
-  const id = urlParams.get('id');
-  const courseId = urlParams.get('courseId');
-  return id ? id : courseId;
-};
-const parseCodeBlocks = (text) => {
-  const regex = /```([\s\S]*?)```/g;
-  return text.replace(regex, (match, code) => {
-    //
-    // .replace(/    /g,' \n').replace(/ /g,' ')
-    const escapedCode = code.replace(/\n/g, '\n');
-    return `<pre class="code-block java"><code>${escapedCode}</code></pre>`;
-  });
-};
 const markdownContent = ref('');
 const appendAndType = (fragment) => {
   // 将新的 Markdown 片段追加到现有的内容后面
@@ -1580,25 +1337,17 @@ const appendAndType = (fragment) => {
   compiledMarkdown.value = md.render(markdownContent.value);
   // // 在 DOM 更新后手动触发 highlight.js
   // 确保 DOM 更新后再执行高亮
-
-  // nextTick(() => {
-  // //   // setTimeout(() => {
   document.querySelectorAll('pre code').forEach((block) => {
     // 移除 data-highlighted 属性以便重新高亮
     delete block.dataset.highlighted; // 移除 data-highlighted 属性
     hljs.highlightBlock(block);
   });
-  // //   // }, 0);
-  // });
 
   scrollToBottom();
 };
 const scrollToBottom = () => {
   const scrollTar = scrollTarget.value;
-  // console.log(scrollTar);
   if (scrollTar) {
-    // console.log(123);
-    // scrollTar.scrollTop = scrollTar.scrollHeight;
     const scrollBehavior = scrollTar.scrollHeight - scrollTar.clientHeight;
     scrollTar.scrollTo({
       top: scrollBehavior,
@@ -1609,7 +1358,6 @@ const scrollToBottom = () => {
 
 // 停止生成
 const handleStop = () => {
-  // if (typingDone.value) {
   ctrl.abort(); // 结束会话
   outputLoading.value = false;
   isClick.value = false;
@@ -1622,8 +1370,6 @@ const handleStop = () => {
   }
 
   typingDone.value = false;
-
-  // }
 };
 const hadlechatStop = async () => {
   const params = {
@@ -1672,16 +1418,10 @@ const handleEnter = (e) => {
     }
   }
 };
-// 是否触发了联想问题
-const handleselectText = (val) => {
-  // questionVisible.value = false; //联想弹层关闭
-  questionList.value = [];
-  textVal.value = val;
-};
+
 // 触发热门问题
 const handleUpdete = (val) => {
   textVal.value = val;
-  // questionVisible.value = false;
   const times = setTimeout(() => {
     resTextHeight();
     clearTimeout(times);
@@ -1689,7 +1429,6 @@ const handleUpdete = (val) => {
 };
 // 获取模板列表
 const getText = async (val) => {
-  // if (!questionVisible.value) return;
   const text = val.replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s]/g, '');
   
   const res = await getChatText(
@@ -1697,14 +1436,6 @@ const getText = async (val) => {
   );
   const arrData = res.data.split('|');
   questionList.value = arrData;
-  // nextTick(() => {
-  //   const arrData = res.data.split('|');
-  //   if (arrData && arrData.length > 0) {
-  //     questionList.value = arrData.filter((item) =>
-  //       item.toLowerCase().includes(textVal.value.toLowerCase())
-  //     );
-  //   }
-  // });
 };
 // 触发热门问题
 const handleNew =(val)=>{
@@ -1718,36 +1449,11 @@ const hideSuggestions = () => {
 };
 //触发输入文本框数据滚动到最后一条
 const questionVisible = ref(false);
-// watch(()=>textVal.value,(newValue, oldValue)=>{
-//   if(newValue.length>oldValue.length){
-//     const text = newValue.replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s]/g, '');
-//     if (text.length > 0) {
-//       questionVisible.value = true;
-//       // 过滤联想数据
-//       if (text.length === 1) {
-//         getText();
-//       } else {
-//         setTimeout(() => {
-//           getText();
-//           clearTimeout();
-//         }, 200);
-//       }
-//     }
-//   }
-// })
 const handleInput = (event) => {
-  // const scrollTar = scrollTarget.value;
-  // if (scrollTar) {
-  // const scrollBehavior = scrollTar.scrollHeight - scrollTar.clientHeight;
-  // scrollTar.scrollTo({
-  //   top: scrollBehavior,
-  //   behavior: 'smooth', // 平滑滚动
-  // });
   if (textVal.value !== '') {
     scrollToBottom();
   }
   resTextHeight();
-  // }
 };
 const resTextHeight = () => {
   const textarea = textareaRef.value;
@@ -1760,13 +1466,11 @@ const resTextHeight = () => {
     const maxHeight = lineHeight * maxLines;
 
     if (currentScrollHeight > maxHeight) {
-      console.log(currentScrollHeight, maxHeight);
       // 超过 5 行：固定高度并显示滚动条
       dynamicHeight.value = `${maxHeight}px`;
       textarea.style.height = `${maxHeight}px`;
       overflowY.value = 'auto';
     } else {
-      console.log(currentScrollHeight, maxHeight);
       // 不足 5 行：动态调整高度
       dynamicHeight.value = `${currentScrollHeight}px`;
       textarea.style.height = `${currentScrollHeight}px`;
@@ -1781,24 +1485,6 @@ const resTextHeight = () => {
     dynamicHeight.value = `auto`;
     textarea.style.height = `auto`;
   }
-};
-// 联想高亮匹配部分
-const highlightMatch = (item) => {
-  const inputValue = textVal.value.toLowerCase();
-  const index = item.toLowerCase().indexOf(inputValue);
-
-  if (index >= 0) {
-    // 将匹配部分用 <span> 包裹并添加高亮样式
-    return (
-      item.substring(0, index) +
-      `<span class="filterHighlight">${item.substring(
-        index,
-        index + inputValue.length
-      )}</span>` +
-      item.substring(index + inputValue.length)
-    );
-  }
-  return item;
 };
 // 下单
 const handleOrder = async (val) => {
@@ -1844,44 +1530,7 @@ const handleUpdateImg = () => {
 const handleUpdateText = () => {
   handleUpdate();
 };
-// // 初始化语音识别器
-// const initializeRecognizer=()=> {
-//       const subscriptionKey = azure.key;
-//       const region = azure.region;
-//       const speechConfig = sdk.SpeechConfig.fromSubscription(subscriptionKey, region);
-
-//       // 设置识别语言（例如中文）
-//       speechConfig.speechRecognitionLanguage = 'zh-CN';
-
-//       // 创建音频配置（默认使用麦克风）
-//       const audioConfig = sdk.AudioConfig.fromDefaultMicrophoneInput();
-
-//       // 创建语音识别器
-//       this.recognizer = new sdk.SpeechRecognizer(speechConfig, audioConfig);
-
-//       // 监听识别结果
-//       this.recognizer.recognizing = (_, event) => {
-//         this.recognizedText = event.result.text;
-//       };
-
-//       // 监听识别结束事件
-//       this.recognizer.recognized = (_, event) => {
-//         if (event.result.reason === sdk.ResultReason.RecognizedSpeech) {
-//           this.recognizedText = event.result.text;
-//         } else if (event.result.reason === sdk.ResultReason.NoMatch) {
-//           console.warn('未识别到语音');
-//         }
-//       };
-
-//       // 监听错误事件
-//       this.recognizer.sessionStopped = (_, event) => {
-//         console.log('识别会话已停止');
-//         this.isRecognizing = false;
-//         this.recognizer.close();
-//       };
-//     }
 // 上传图片
-const AadioPopoverRef = ref(null);
 const AadioButtonRef = ref(null);
 const isMicrophoneGranted = ref(false); //是否授予麦克风权限
 const isMicrophoneDenied = ref(false); // 是否拒绝麦克风权限
@@ -1906,21 +1555,11 @@ const handleUpdateYy = async () => {
     };
     // 监听停止事件
     mediaRecorder.value.onstop = async () => {
-      // await sendAudioToAzure()
       const audioBlob = new Blob(audioChunks.value, { type: 'audio/wav' });
-      // console.log(audioBlob,11)
       await sendAudioToAzure(audioBlob);
-      // const webmBlob = new Blob(audioChunks.value, { type: 'audio/webm' });
-      // const wavBlob = await convertWebmToWav(webmBlob);
-      // // const audioBlob = new Blob(audioChunks.value, { type: 'audio/webm' });
-      // //       const wavBlob = await convertWebMToWav(audioBlob);
-      // //       console.log('Converted to WAV:', wavBlob);
-
-      // await sendAudioToAzure(wavBlob);
     };
     // 开始录音
     mediaRecorder.value.start();
-    // recognizeSpeech('audioConfig')
   } catch (error) {
     // 处理错误
     console.error('获取麦克风权限失败:', error);
@@ -1938,150 +1577,15 @@ const handleUpdateYy = async () => {
   }
 };
 const sendAudioToAzure = async (audioBlob) => {
-  // let audioBlob = new Blob(audioChunks.value, { type: 'audio/wav' });
   let formData = new FormData();
   formData.append('audioFile', audioBlob);
-  // const audioFile = new File([audioBlob], 'recording.wav');
 
   const res = await audioTextStt(formData);
   if (res.code === 200) {
     textVal.value = textVal.value + res.data.replace(/[\r\n]+/g, '');
     textNum.value = textVal.value.length;
   }
-  // try {
-  //       const response = await axios.post(
-  //         `https://${azure.region}.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1`,
-  //         audioBlob,
-  //         {
-  //           headers: {
-  //             'Ocp-Apim-Subscription-Key': azure.key,
-  //             'Content-Type': 'audio/wav; codecs=audio/pcm; samplerate=16000',
-  //           },
-  //           // params: {
-  //           //   'language': 'zh-CN', // 根据需要更改语言
-  //           // },
-  //           // responseType: 'json',
-  //         }
-  //       );
-
-  //       const texts=response.data.DisplayText;
-  //       console.log(response.data)
-  //     } catch (error) {
-  //       console.error(error);
-  //     }
-  // // const audioBlob = new Blob(audioChunks.value, { type: 'audio/wav' });
-  // // const audioFile = new File([audioBlob], 'recording.wav');
-
-  // // const audioConfig = sdk.AudioConfig.fromWavFileInput(audioFile);
-  // // try {
-  // //   const transcription = await recognizeSpeech(audioConfig);
-  // //   console.log(transcription,11)
-  // // } catch (error) {
-  // //   console.error('Error recognizing speech:', error);
-  // // }
-  // if (audioChunks.value.length === 0) {
-  //       alert('未捕获到音频数据');
-  //       return;
-  //     }
-  // const region = azure.region; // 替换为你的服务区域
-  // const subscriptionKey = azure.key; // 替换为你的订阅密钥
-
-  // const endpoint = `https://${azure.region}.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1`;
-
-  // // 将音频数据转换为 Blob
-  // const audioBlob = new Blob(audioChunks.value, { type: 'audio/wav' });
-  // console.log(endpoint)
-  // try {
-  //   const response = await fetch(endpoint, {
-  //     method: 'POST',
-  //     headers: {
-  //       'Ocp-Apim-Subscription-Key': azure.key,
-  //       'Content-Type': 'audio/wav; codec=audio/pcm; samplerate=16000',
-  //     },
-  //     body: audioBlob,
-  //   });
-
-  //   if (!response.ok) {
-  //     throw new Error(`HTTP error! status: ${response.status}`);
-  //   }
-
-  //   const result = await response.json();
-  //   const transcription = result.DisplayText || '未识别到文本';
-  //   console.log(transcription)
-  // } catch (error) {
-  //   console.error('Error transcribing audio:', error);
-  //   const transcription = '识别失败';
-  //   console.log(transcription)
-  // } finally {
-  //   // 清空音频数据
-  //   audioChunks.value = [];
-  // }
 };
-// const convertWebmToWav = async (webmBlob) => {
-//   // 将 WebM Blob 解码为 AudioBuffer
-//   const audioContext = new AudioContext();
-//   const arrayBuffer = await webmBlob.arrayBuffer();
-//   const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
-//   // 将 AudioBuffer 转换为 WAV 格式的 Blob
-//   const wavBuffer = encodeAudioBufferToWav(audioBuffer);
-//   console.log(wavBuffer);
-//   return new Blob([wavBuffer], { type: 'audio/wav' });
-// };
-// const encodeAudioBufferToWav = (audioBuffer) => {
-//   const numChannels = audioBuffer.numberOfChannels;
-//   const sampleRate = audioBuffer.sampleRate;
-//   const bitsPerSample = 16; // WAV 文件通常使用 16 位深度
-//   const byteRate = (sampleRate * numChannels * bitsPerSample) / 8;
-//   const blockAlign = (numChannels * bitsPerSample) / 8;
-//   const dataSize = audioBuffer.length * numChannels * 2; // 16 位 = 2 字节
-
-//   // 创建 ArrayBuffer 存储 WAV 文件数据
-//   const buffer = new ArrayBuffer(44 + dataSize);
-//   const view = new DataView(buffer);
-
-//   // 写入 WAV 文件头
-//   writeString(view, 0, 'RIFF'); // RIFF 头
-//   view.setUint32(4, 36 + dataSize, true); // 文件长度
-//   writeString(view, 8, 'WAVE'); // WAVE 格式
-//   writeString(view, 12, 'fmt '); // fmt 子块
-//   view.setUint32(16, 16, true); // fmt 子块长度
-//   view.setUint16(20, 1, true); // PCM 格式
-//   view.setUint16(22, numChannels, true); // 声道数
-//   view.setUint32(24, sampleRate, true); // 采样率
-//   view.setUint32(28, byteRate, true); // 字节率
-//   view.setUint16(32, blockAlign, true); // 块对齐
-//   view.setUint16(34, bitsPerSample, true); // 位深度
-//   writeString(view, 36, 'data'); // data 子块
-//   view.setUint32(40, dataSize, true); // data 子块长度
-//   console.log(12563);
-//   // 写入 PCM 数据
-//   floatTo16BitPCM(view, 44, audioBuffer);
-//   // 返回 WAV Blob
-//   return new Blob([view], { type: 'audio/wav' });
-// };
-// const writeString = (view, offset, string) => {
-//   console.log(view, offset, string);
-//   for (let i = 0; i < string.length; i++) {
-//     view.setUint8(offset + i, string.charCodeAt(i));
-//   }
-// };
-// const floatTo16BitPCM = (view, offset, audioBuffer) => {
-//   const numChannels = audioBuffer.numberOfChannels;
-//   const length = audioBuffer.length;
-
-//   for (let i = 0; i < length; i++) {
-//     for (let channel = 0; channel < numChannels; channel++) {
-//       const sample = Math.max(
-//         -1,
-//         Math.min(1, audioBuffer.getChannelData(channel)[i])
-//       ); // 限制在 [-1, 1] 范围内
-//       const int16 = sample < 0 ? sample * 0x8000 : sample * 0x7fff; // 转换为 16 位整数
-//       view.setInt16(offset, int16, true); // 写入数据
-//       offset += 2;
-//     }
-//   }
-// };
 // 停止语音输入
 const handleStopMicrophone = () => {
   mediaRecorder.value.stop();
@@ -2109,13 +1613,7 @@ const handleCloseMic = () => {
 // 历史记录
 const visible = ref(false);
 const handleHistory = () => {
-  // unref(popoverRef.value).popperRef.value?.delayHide?.();
   visible.value = true;
-  // if (ctrl) {
-  //   ctrl.abort(); // 结束会话
-  //   handleStop();
-  // }
-
   clearData();
   const times = setTimeout(() => {
     resTextHeight();
@@ -2135,7 +1633,6 @@ const handleRight = () => {
 const handleMagnify = () => {
   handleUpdate();
 };
-// handlePraise\handleTread\handlePlay\handleCopy\handleUp
 // 点赞
 const handlePraise = () => {
   // isPraise.value = true;
@@ -2145,8 +1642,6 @@ const handlePraise = () => {
 // 点踩
 const isTread = ref(false);
 const handleTread = () => {
-  // isTread.value = true;
-  // isPraise.value = false
   handleUpdate();
 };
 // 复制
@@ -2165,11 +1660,6 @@ const pauseAudio = () => {
     console.error('音频未加载完成');
   }
 };
-// 语音播放
-let textArray = ref([]);
-// const charDurations=ref([])
-let sound = null;
-let currentCharIndex = ref(-1);
 const handlePlay = async (val, i) => {
   isPlaying.value = true;
   audioElement.value.pause();
@@ -2185,55 +1675,8 @@ const handlePlay = async (val, i) => {
       // 创建音频的url
       const url = window.URL.createObjectURL(new Blob([res]));
       audioUrl.value = url;
-      // if (sound) {
-      //   sound.stop(); // 如果正在播放，先停止
-      // }
-
-      // // 初始化音频
-      // sound = new Howl({
-      //   src: [audioUrl.value], // 语音文件地址
-      //   onplay: () => {
-      //     console.log('语音开始播放');
-      //     currentCharIndex.value = 0; // 开始播放时高亮第一个单词
-      //   },
-      //   onend: () => {
-      //     console.log('语音播放结束');
-      //     currentCharIndex.value = -1; // 播放结束时取消高亮
-      //   },
-      // });
-
-      // sound.play();
-
-      // // 根据语音播放时间高亮单词
-      // // 假设每个单词的持续时间是固定的（例如 1 秒）
-      // const wordDuration = 1000; // 每个单词的持续时间（单位：毫秒）
-      // textArray.value.forEach((_, index) => {
-      //   setTimeout(() => {
-      //     currentCharIndex.value = index;
-      //     console.log(currentCharIndex.value)
-      //   }, index * wordDuration);
-      // });
     }
   }
-
-  // const audio = new Audio(url);
-  // audio.play().catch(error => {
-  //   console.warn("Audio play failed", error);
-  // });
-  // azureService.value = new AzureTtsService(azure.key, azure.region);
-  // const ids = document.getElementById('audio');
-  // if (val.trim() !== '') {
-  //   const blob = await azureService.value.textToSpeech(val);
-  //   // 创建音频的url
-  //   const url = window.URL.createObjectURL(
-  //     new Blob([blob], { type: 'audio/wav' })
-  //   );
-  //   audioUrl.value = url;
-  //   // // 初始化文本数组和字符持续时间
-  //   // textArray.value = val.split('');
-  //   // charDurations.value = calculateCharDurations(textArray.value.length, blob.size);
-  // }
-
   setTimeout(() => {
     if (audioElement.value && isAudioLoaded.value) {
       audioElement.value.play();
@@ -2241,29 +1684,10 @@ const handlePlay = async (val, i) => {
     }
   }, 500);
 };
-// const calculateCharDurations=(charCount, audioSize)=> {
-//       const totalDuration = audioElement.value.duration || 10; // 假设音频时长为10秒
-//       return Array(charCount).fill(totalDuration / charCount);
-//     }
-// const  updateHighlight=()=> {
-//       const currentTime = audioElement.value.currentTime;
-//       let elapsedTime = 0;
-//       for (let i = 0; i < charDurations.value.length; i++) {
-//         elapsedTime += charDurations.value[i];
-//         console.log(i)
-//         if (currentTime <= elapsedTime) {
-//           currentCharIndex.value = i;
-//           console.log(currentCharIndex.value)
-//           break;
-//         }
-//       }
-//     }
 // 更新
 const isClickUpdate = ref(false); //是否触发了更新按钮
 const handleUp = () => {
-  // handleUpdate();
   isClickUpdate.value = true;
-  console.log(isClick.value);
   if (isClick.value) return;
   handleSend();
 };
@@ -2322,14 +1746,9 @@ const handleActive = (sessionId, index, i) => {
     scrollToBottom();
     clearTimeout(times);
   }, 150);
-  
-  
-  
-
   visible.value = false;
   clearData();
   clearAudio();
-  // console.log(ctrl);
   if (ctrl) {
     ctrl.abort(); // 结束会话
     handleStop();
@@ -2380,67 +1799,8 @@ const handleCancel = () => {
   isClickEdit.value = false;
   getList();
 };
-// 弹层拖拽
-// // 默认显示在右下角
-// const dialogStyle = computed(() => ({
-//   position: 'fixed',
-//   left: `${dialogPosition.value.x}px`,
-//   top: `${dialogPosition.value.y}px`,
-//   transform: 'translate(-50%, -50%)', // 居中定位
-// }));
-
-// // 初始化对话框位置到右下角
-// const initializeDialogPosition = () => {
-//   const viewportWidth = window.innerWidth;
-//   const viewportHeight = window.innerHeight;
-//   dialogPosition.value.x = viewportWidth - 258; // 假设对话框宽度为 400px
-//   dialogPosition.value.y = viewportHeight - 370; // 假设对话框高度为 300px
-// };
-
-// // // 打开对话框时初始化位置
-// // watch(dialogVisible, (newVal) => {
-// //   if (newVal) {
-// //     initializeDialogPosition();
-// //   }
-// // });
-
-// const handleMouseDown = (event) => {
-//   // 排除 input 和其他交互元素
-//   console.log(event.target.tagName);
-//   if (event.target.tagName !== 'div.title') {
-//     return;
-//   }
-
-//   isDragging.value = true;
-//   dragStartX.value = event.clientX - dialogPosition.value.x;
-//   dragStartY.value = event.clientY - dialogPosition.value.y;
-
-//   document.addEventListener('mousemove', handleMouseMove);
-//   document.addEventListener('mouseup', handleMouseUp);
-// };
-
-// const handleMouseMove = (event) => {
-//   if (isDragging.value) {
-//     const newX = event.clientX - dragStartX.value;
-//     const newY = event.clientY - dragStartY.value;
-
-//     // 限制拖拽范围
-//     const maxX = window.innerWidth - 258; // 假设对话框宽度为 400px
-//     const maxY = window.innerHeight - 300; // 假设对话框高度为 300px
-
-//     dialogPosition.value.x = Math.max(0, Math.min(newX, maxX));
-//     dialogPosition.value.y = Math.max(0, Math.min(newY, maxY));
-//   }
-// };
-
-// const handleMouseUp = () => {
-//   isDragging.value = false;
-//   document.removeEventListener('mousemove', handleMouseMove);
-//   document.removeEventListener('mouseup', handleMouseUp);
-// };
 onUnmounted(() => {
   ctrl.abort(); // 结束会话
-  // ctrl.close(); // 结束会话
 });
 </script>
 <style lang="scss" src="./index.scss" scoped></style>
