@@ -4,7 +4,7 @@ import NProgress from 'nprogress'; // progress bar
 import 'nprogress/nprogress.css'; // progress bar style
 
 import { getPermissionStore, getToken } from '@/store';
-import router from '@/router';
+import router from '@/router';    // 拿到的就是 router/index.js 里 createRouter 创建的那个实例
 
 const permissionStore = getPermissionStore();
 const userStore = getToken();

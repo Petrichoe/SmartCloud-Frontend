@@ -39,7 +39,7 @@ export default defineConfig((mode) => {
           rewrite: (path) => path.replace(/^\/api/, '')
         },
         '/img-tx': {
-          target:  'http://api.tianji.com', // 'http://172.17.2.134',
+          target:  'http://www.tianji.com', // 图片由 www.tianji.com 的 Nginx 代理到对象存储
           changeOrigin: true,
           // rewrite: (path) => {
           //   return path.replace(/^\/img-tx/, '')

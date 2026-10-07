@@ -39,7 +39,7 @@ import { userLogins, getUserInfo } from "@/api/user"
 import { useUserStore } from '@/store'
 import { ElMessage } from "element-plus";
 
-const emit = defineEmits(['goHandle'])
+const emit = defineEmits(['goHandle'])  //声明本组件会向外发一个名叫 goHandle 的事件，拿到发事件的工具 emit
 const store = useUserStore();
 const router = useRouter()
 const route = useRoute()
@@ -48,7 +48,7 @@ const formRef = ref();
 const checked = ref(false)
 // 登录参数效验
 const fromData = reactive({
-  username: "jack",
+  username: "17753206868",
   password: "123456",
   type: 1
 });
