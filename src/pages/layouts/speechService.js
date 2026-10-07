@@ -1,8 +1,8 @@
 import * as sdk from "microsoft-cognitiveservices-speech-sdk";
 
 // import { SpeechSDK } from '@azure/cognitiveservices-speech-sdk';
-const subscriptionKey = "REMOVED";
-const serviceRegion = "eastasia"; // e.g., "westus"
+const subscriptionKey = import.meta.env.VITE_AZURE_SPEECH_KEY || "";
+const serviceRegion = import.meta.env.VITE_AZURE_SPEECH_REGION || "eastasia";
 
 export const recognizeSpeech = (audioConfig) => {
     console.log(audioConfig)
